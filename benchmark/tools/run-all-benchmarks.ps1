@@ -136,5 +136,5 @@ $folders = @(
 
 foreach ($folder in $folders) {
     Write-Host "Running benchmark for $folder..."
-    .\run-benchmark.ps1 -Model gemini/gemini-exp-1121 -TestPath $folder
+    .\run-benchmark.ps1 -Model  -TestPath $folder
 }

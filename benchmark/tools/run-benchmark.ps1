@@ -3,7 +3,7 @@ param(
     [string]$TestPath="say",
     [string]$CondaEnv = "aider-dev",
     [Parameter(Mandatory=$true)]
-    [string]$Model = "deepseek/deepseek-coder",
+    [string]$Model = "openrouter/Qwen/Qwen-2.5-coder-32b-instruct",
     [string]$EditFormat = "diff",
     [int]$Threads = 1
 )
