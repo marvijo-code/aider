@@ -260,21 +260,29 @@ def main(
         test_dnames = sorted(os.listdir(original_dname))
         
         # Filter based on keywords if specified
-        if keywords:
+        if keywords and num_tests <= 0:
             keywords = keywords.split(",")
             test_dnames = [dn for dn in test_dnames for keyword in keywords if keyword in dn]
 
+        if num_tests > 0:
+            test_dnames = test_dnames[:num_tests]
+
         if test_dnames:
-            # Get the first matching directory as it's the target test
-            target_test = test_dnames[0]
-            print(f"Copying {original_dname / target_test} -> {dirname / target_test} ...")
             dirname.mkdir(parents=True, exist_ok=True)
-            shutil.copytree(original_dname / target_test, dirname / target_test)
+            for target_test in test_dnames:
+                target_dir = dirname / target_test
+                if target_dir.exists():
+                    shutil.rmtree(target_dir)
+                print(f"Copying {original_dname / target_test} -> {target_dir} ...")
+                shutil.copytree(original_dname / target_test, target_dir)
             print("...done")
         else:
-            print(f"No test directories found matching keyword: {keywords}")
+            print(f"No test directories found matching criteria")
             return 1
     else:
+        if dirname.exists():
+            shutil.rmtree(dirname)
+        dirname.parent.mkdir(parents=True, exist_ok=True)
         print(f"Copying {original_dname} -> {dirname} ...")
         shutil.copytree(original_dname, dirname)
         print("...done")

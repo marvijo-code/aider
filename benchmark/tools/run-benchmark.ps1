@@ -1,11 +1,12 @@
 param(
-    [Parameter(Mandatory=$true)]
-    [string]$TestPath="say",
+    [Parameter(Mandatory=$false)]
+    [string]$TestPath="default",
     [string]$CondaEnv = "aider-dev",
     [Parameter(Mandatory=$true)]
     [string]$Model = "openrouter/Qwen/Qwen-2.5-coder-32b-instruct",
     [string]$EditFormat = "diff",
-    [int]$Threads = 1
+    [int]$Threads = 1,
+    [int]$NumTests = -1
 )
 
 # Stop on any error
@@ -40,9 +41,9 @@ if ($TestPath -eq "all") {
     }
 
     # Run all benchmarks (no need to copy files as benchmark.py handles it)
-    $env:AIDER_BENCHMARK_DIR = Join-Path $PSScriptRoot ".." "tmp.benchmarks"
+    $env:AIDER_BENCHMARK_DIR = (Resolve-Path (Join-Path $PSScriptRoot "tmp.benchmarks")).Path
     $env:AIDER_RUN_LOCALLY = "true"
-    python benchmark/benchmark.py $runName --model $Model --edit-format $EditFormat --threads $Threads
+    python benchmark/benchmark.py "tmp.benchmarks/${runName}" --model $Model --edit-format $EditFormat --threads $Threads
 
     # Generate stats
     Write-Host "Generating benchmark stats..."
@@ -55,7 +56,7 @@ if ($TestPath -eq "all") {
 
 # Rest of the original script for single test...
 $fullTestPath = Join-Path "tmp.benchmarks/exercism-python" $TestPath
-if (!(Test-Path $fullTestPath)) {
+if (!$NumTests -gt 0 -and !(Test-Path $fullTestPath)) {
     Write-Error "Test path not found: $fullTestPath"
     Write-Error "Please provide a path relative to tmp.benchmarks/exercism-python/"
     Write-Error "Example: .\run-test.ps1 -TestPath 'hello-world'"
@@ -67,12 +68,15 @@ $timestamp = Get-Date -Format "yyyy-MM-dd-HH-mm-ss"
 $testName = Split-Path $TestPath -Leaf
 $runName = "${timestamp}--${testName}-${Model}-${EditFormat}"
 
-# Create a temporary directory for this test
+# Define the temporary directory path
 $testDir = Join-Path "tmp.benchmarks" $runName
-New-Item -ItemType Directory -Path $testDir | Out-Null
 
-# Copy only the specific test to the temporary directory
-Copy-Item -Path $fullTestPath -Destination $testDir -Recurse
+# Copy only the specific test to the temporary directory if not using num-tests
+if ($NumTests -le 0) {
+    # Create directory only when we need to copy a specific test
+    New-Item -ItemType Directory -Path $testDir | Out-Null
+    Copy-Item -Path $fullTestPath -Destination $testDir -Recurse
+}
 
 Write-Host "Activating $CondaEnv conda environment..."
 conda activate $CondaEnv
@@ -87,14 +91,19 @@ Get-Content .env | ForEach-Object {
 }
 
 # Run the benchmark
-Write-Host "Running test: $TestPath"
+Write-Host "Running test: $(if ($NumTests -ne -1) { 'all (filtered by num-tests)' } else { $TestPath })"
 Write-Host "Using model: $Model"
 Write-Host "Edit format: $EditFormat"
+Write-Host "Number of tests: $(if ($NumTests -eq -1) { 'all' } else { $NumTests })"
 
-$env:AIDER_BENCHMARK_DIR = Join-Path $PSScriptRoot "tmp.benchmarks"
+$env:AIDER_BENCHMARK_DIR = (Resolve-Path (Join-Path $PSScriptRoot "tmp.benchmarks")).Path
 $env:AIDER_RUN_LOCALLY = "true"
 $env:AIDER_DOCKER = 1
-python ../benchmark.py $runName --model $Model --edit-format $EditFormat --threads $Threads --keywords $TestPath
+if ($NumTests -ne -1) {
+    python ../benchmark.py "tmp.benchmarks/${runName}" --model $Model --edit-format $EditFormat --threads $Threads --num-tests $NumTests
+} else {
+    python ../benchmark.py "tmp.benchmarks/${runName}" --model $Model --edit-format $EditFormat --threads $Threads --keywords $TestPath
+}
 
 # Generate stats
 Write-Host "Generating test stats..."
