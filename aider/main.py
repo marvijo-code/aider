@@ -9,7 +9,11 @@ import webbrowser
 from dataclasses import fields
 from pathlib import Path
 
-import git
+try:
+    import git
+except ImportError:
+    git = None
+
 import importlib_resources
 from dotenv import load_dotenv
 from prompt_toolkit.enums import EditingMode
@@ -20,6 +24,7 @@ from aider.args import get_parser
 from aider.coders import Coder
 from aider.coders.base_coder import UnknownEditFormat
 from aider.commands import Commands, SwitchCoder
+from aider.copypaste import ClipboardWatcher
 from aider.format_settings import format_settings, scrub_sensitive_info
 from aider.history import ChatSummary
 from aider.io import InputOutput
@@ -92,6 +97,9 @@ def make_new_repo(git_root, io):
 
 
 def setup_git(git_root, io):
+    if git is None:
+        return
+
     try:
         cwd = Path.cwd()
     except OSError:
@@ -409,7 +417,9 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
     if argv is None:
         argv = sys.argv[1:]
 
-    if force_git_root:
+    if git is None:
+        git_root = None
+    elif force_git_root:
         git_root = force_git_root
     else:
         git_root = get_git_root()
@@ -455,6 +465,9 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
 
     # Parse again to include any arguments that might have been defined in .env
     args = parser.parse_args(argv)
+
+    if git is None:
+        args.git = False
 
     if args.analytics_disable:
         analytics = Analytics(permanently_disable=True)
@@ -514,6 +527,7 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
             llm_history_file=args.llm_history_file,
             editingmode=editing_mode,
             fancy_input=args.fancy_input,
+            multiline_mode=args.multiline,
         )
 
     io = get_io(args.pretty)
@@ -524,6 +538,50 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
             raise err
         io = get_io(False)
         io.tool_warning("Terminal does not support pretty output (UnicodeDecodeError)")
+
+    # Process any environment variables set via --set-env
+    if args.set_env:
+        for env_setting in args.set_env:
+            try:
+                name, value = env_setting.split("=", 1)
+                os.environ[name.strip()] = value.strip()
+            except ValueError:
+                io.tool_error(f"Invalid --set-env format: {env_setting}")
+                io.tool_output("Format should be: ENV_VAR_NAME=value")
+                return 1
+
+    # Process any API keys set via --api-key
+    if args.api_key:
+        for api_setting in args.api_key:
+            try:
+                provider, key = api_setting.split("=", 1)
+                env_var = f"{provider.strip().upper()}_API_KEY"
+                os.environ[env_var] = key.strip()
+            except ValueError:
+                io.tool_error(f"Invalid --api-key format: {api_setting}")
+                io.tool_output("Format should be: provider=key")
+                return 1
+
+    if args.anthropic_api_key:
+        os.environ["ANTHROPIC_API_KEY"] = args.anthropic_api_key
+
+    if args.openai_api_key:
+        os.environ["OPENAI_API_KEY"] = args.openai_api_key
+    if args.openai_api_base:
+        os.environ["OPENAI_API_BASE"] = args.openai_api_base
+    if args.openai_api_version:
+        io.tool_warning(
+            "--openai-api-version is deprecated, use --set-env OPENAI_API_VERSION=<value>"
+        )
+        os.environ["OPENAI_API_VERSION"] = args.openai_api_version
+    if args.openai_api_type:
+        io.tool_warning("--openai-api-type is deprecated, use --set-env OPENAI_API_TYPE=<value>")
+        os.environ["OPENAI_API_TYPE"] = args.openai_api_type
+    if args.openai_organization_id:
+        io.tool_warning(
+            "--openai-organization-id is deprecated, use --set-env OPENAI_ORGANIZATION=<value>"
+        )
+        os.environ["OPENAI_ORGANIZATION"] = args.openai_organization_id
 
     analytics = Analytics(logfile=args.analytics_log, permanently_disable=args.analytics_disable)
     if args.analytics is not False:
@@ -600,7 +658,7 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
     # We can't know the git repo for sure until after parsing the args.
     # If we guessed wrong, reparse because that changes things like
     # the location of the config.yml and history files.
-    if args.git and not force_git_root:
+    if args.git and not force_git_root and git is not None:
         right_repo_root = guessed_wrong_repo(io, git_root, fnames, git_dname)
         if right_repo_root:
             analytics.event("exit", reason="Recursing with correct repo")
@@ -645,20 +703,6 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
     is_first_run = is_first_run_of_new_version(io, verbose=args.verbose)
     check_and_load_imports(io, is_first_run, verbose=args.verbose)
 
-    if args.anthropic_api_key:
-        os.environ["ANTHROPIC_API_KEY"] = args.anthropic_api_key
-
-    if args.openai_api_key:
-        os.environ["OPENAI_API_KEY"] = args.openai_api_key
-    if args.openai_api_base:
-        os.environ["OPENAI_API_BASE"] = args.openai_api_base
-    if args.openai_api_version:
-        os.environ["OPENAI_API_VERSION"] = args.openai_api_version
-    if args.openai_api_type:
-        os.environ["OPENAI_API_TYPE"] = args.openai_api_type
-    if args.openai_organization_id:
-        os.environ["OPENAI_ORGANIZATION"] = args.openai_organization_id
-
     register_models(git_root, args.model_settings_file, io, verbose=args.verbose)
     register_litellm_models(git_root, args.model_metadata_file, io, verbose=args.verbose)
 
@@ -686,6 +730,10 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
         editor_model=args.editor_model,
         editor_edit_format=args.editor_edit_format,
     )
+
+    if args.copy_paste and args.edit_format is None:
+        if main_model.edit_format in ("diff", "whole"):
+            main_model.edit_format = "editor-" + main_model.edit_format
 
     if args.verbose:
         io.tool_output("Model metadata:")
@@ -800,6 +848,7 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
             suggest_shell_commands=args.suggest_shell_commands,
             chat_language=args.chat_language,
             detect_urls=args.detect_urls,
+            auto_copy_context=args.copy_paste,
         )
     except UnknownEditFormat as err:
         io.tool_error(str(err))
@@ -822,7 +871,18 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
         ignores.append(args.aiderignore)
 
     if args.watch_files:
-        FileWatcher(coder, gitignores=ignores, verbose=args.verbose)
+        file_watcher = FileWatcher(
+            coder,
+            gitignores=ignores,
+            verbose=args.verbose,
+            analytics=analytics,
+            root=str(Path.cwd()) if args.subtree_only else None,
+        )
+        coder.file_watcher = file_watcher
+
+    if args.copy_paste:
+        analytics.event("copy-paste mode")
+        ClipboardWatcher(coder.io, verbose=args.verbose)
 
     coder.show_announcements()
 
@@ -843,9 +903,9 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
             io.tool_error("No --test-cmd provided.")
             analytics.event("exit", reason="No test command provided")
             return 1
-        test_errors = coder.commands.cmd_test(args.test_cmd)
-        if test_errors:
-            coder.run(test_errors)
+        coder.commands.cmd_test(args.test_cmd)
+        if io.placeholder:
+            coder.run(io.placeholder)
 
     if args.commit:
         if args.dry_run:

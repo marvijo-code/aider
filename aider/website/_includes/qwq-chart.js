@@ -93,6 +93,14 @@ document.addEventListener('DOMContentLoaded', function () {
               ticks: {
                 font: {
                   size: 16
+                },
+                callback: function(value, index) {
+                  const label = this.getLabelForValue(value);
+                  if (label.includes(" + ")) {
+                    const parts = label.split(" + ");
+                    return [parts[0] + " +", parts[1]];
+                  }
+                  return label;
                 }
               }
             }
