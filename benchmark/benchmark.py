@@ -256,6 +256,25 @@ def main(
         dirname.rename(dest)
 
     if not dirname.exists():
+        # Get list of test directories first
+        test_dnames = sorted(os.listdir(original_dname))
+        
+        # Filter based on keywords if specified
+        if keywords:
+            keywords = keywords.split(",")
+            test_dnames = [dn for dn in test_dnames for keyword in keywords if keyword in dn]
+
+        if test_dnames:
+            # Get the first matching directory as it's the target test
+            target_test = test_dnames[0]
+            print(f"Copying {original_dname / target_test} -> {dirname / target_test} ...")
+            dirname.mkdir(parents=True, exist_ok=True)
+            shutil.copytree(original_dname / target_test, dirname / target_test)
+            print("...done")
+        else:
+            print(f"No test directories found matching keyword: {keywords}")
+            return 1
+    else:
         print(f"Copying {original_dname} -> {dirname} ...")
         shutil.copytree(original_dname, dirname)
         print("...done")
@@ -263,7 +282,6 @@ def main(
     test_dnames = sorted(os.listdir(dirname))
 
     if keywords:
-        keywords = keywords.split(",")
         test_dnames = [dn for dn in test_dnames for keyword in keywords if keyword in dn]
 
     random.shuffle(test_dnames)

@@ -40,7 +40,7 @@ if ($TestPath -eq "all") {
     }
 
     # Run all benchmarks (no need to copy files as benchmark.py handles it)
-    $env:AIDER_BENCHMARK_DIR = "tmp.benchmarks"
+    $env:AIDER_BENCHMARK_DIR = Join-Path $PSScriptRoot ".." "tmp.benchmarks"
     $env:AIDER_RUN_LOCALLY = "true"
     python benchmark/benchmark.py $runName --model $Model --edit-format $EditFormat --threads $Threads
 
@@ -91,13 +91,14 @@ Write-Host "Running test: $TestPath"
 Write-Host "Using model: $Model"
 Write-Host "Edit format: $EditFormat"
 
-$env:AIDER_BENCHMARK_DIR = "tmp.benchmarks"
+$env:AIDER_BENCHMARK_DIR = Join-Path $PSScriptRoot "tmp.benchmarks"
 $env:AIDER_RUN_LOCALLY = "true"
-python benchmark/benchmark.py $runName --model $Model --edit-format $EditFormat --threads $Threads --keywords $testName
+$env:AIDER_DOCKER = 1
+python ../benchmark.py $runName --model $Model --edit-format $EditFormat --threads $Threads --keywords $TestPath
 
 # Generate stats
 Write-Host "Generating test stats..."
-python benchmark/benchmark.py --stats "tmp.benchmarks/${runName}"
+python ../benchmark.py --stats "tmp.benchmarks/${runName}"
 
 Write-Host "Test complete! Results are in tmp.benchmarks/${runName}"
-Write-Host "You can view the stats by running: python benchmark/benchmark.py --stats tmp.benchmarks/${runName}" 
+Write-Host "You can view the stats by running: python ../benchmark.py --stats tmp.benchmarks/${runName}" 
