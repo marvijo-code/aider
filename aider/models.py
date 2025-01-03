@@ -75,7 +75,7 @@ MODEL_ALIASES = {
     "35-turbo": "gpt-3.5-turbo",
     "3": "gpt-3.5-turbo",
     # Other models
-    "deepseek": "deepseek/deepseek-coder",
+    "deepseek": "deepseek/deepseek-chat",
     "flash": "gemini/gemini-2.0-flash-exp",
 }
 
@@ -666,6 +666,13 @@ MODEL_SETTINGS = [
         reminder="sys",
     ),
     ModelSettings(
+        "openrouter/deepseek/deepseek-chat",
+        "diff",
+        use_repo_map=True,
+        examples_as_sys_msg=True,
+        reminder="sys",
+    ),
+    ModelSettings(
         "openrouter/openai/gpt-4o",
         "diff",
         weak_model_name="openrouter/openai/gpt-4o-mini",
@@ -763,6 +770,39 @@ MODEL_SETTINGS = [
         use_system_prompt=False,
         use_temperature=False,
         streaming=False,
+    ),
+    ModelSettings(
+        "openrouter/openai/o1",
+        "diff",
+        weak_model_name="openrouter/openai/gpt-4o-mini",
+        editor_model_name="openrouter/openai/gpt-4o",
+        editor_edit_format="editor-diff",
+        use_repo_map=True,
+        streaming=False,
+        use_temperature=False,
+        # extra_params=dict(extra_body=dict(reasoning_effort="high")),
+    ),
+    ModelSettings(
+        "openai/o1",
+        "diff",
+        weak_model_name="openai/gpt-4o-mini",
+        editor_model_name="openai/gpt-4o",
+        editor_edit_format="editor-diff",
+        use_repo_map=True,
+        streaming=False,
+        use_temperature=False,
+        # extra_params=dict(extra_body=dict(reasoning_effort="high")),
+    ),
+    ModelSettings(
+        "o1",
+        "diff",
+        weak_model_name="gpt-4o-mini",
+        editor_model_name="gpt-4o",
+        editor_edit_format="editor-diff",
+        use_repo_map=True,
+        streaming=False,
+        use_temperature=False,
+        # extra_params=dict(extra_body=dict(reasoning_effort="high")),
     ),
     ModelSettings(
         "openrouter/qwen/qwen-2.5-coder-32b-instruct",
