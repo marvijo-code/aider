@@ -74,6 +74,7 @@ class Commands:
 
         self.help = None
         self.editor = editor
+        self.auto_approve = args.auto_approve if args else False
 
     def cmd_model(self, args):
         "Switch to a new LLM"
@@ -936,8 +937,11 @@ class Commands:
                 dict(role="assistant", content="Ok."),
             ]
 
-            if add and exit_status != 0:
-                self.io.placeholder = "Fix that"
+        if hasattr(self.coder, "args") and getattr(self.coder.args, "auto_approve", False):
+            self.io.placeholder = getattr(self.coder.args, "auto_approve_placeholder", "yes, proceed")
+            self.io.input = "\n"
+        elif add and exit_status != 0:
+            self.io.placeholder = "Fix that"
 
     def cmd_exit(self, args):
         "Exit the application"
