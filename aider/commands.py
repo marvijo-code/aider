@@ -67,6 +67,7 @@ class Commands:
         self.verbose = verbose
 
         self.verify_ssl = verify_ssl
+        self.auto_approve = args.auto_approve if args else False
         if voice_language == "auto":
             voice_language = None
 
@@ -937,8 +938,8 @@ class Commands:
                 dict(role="assistant", content="Ok."),
             ]
 
-        if hasattr(self.coder, "args") and getattr(self.coder.args, "auto_approve", False):
-            self.io.placeholder = getattr(self.coder.args, "auto_approve_placeholder", "yes, proceed")
+        if self.auto_approve:
+            self.io.placeholder = getattr(self.args, "auto_approve_placeholder", "yes, proceed")
             self.io.input = "\n"
         elif add and exit_status != 0:
             self.io.placeholder = "Fix that"
