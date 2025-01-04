@@ -348,14 +348,14 @@ def get_parser(default_config_files, git_root):
     )
     group.add_argument(
         "--auto-approve",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
         help="Automatically approve commands (default: False)",
         default=False,
     )
     group.add_argument(
         "--auto-approve-placeholder",
-        help="Placeholder text to show when auto-approving (default: yes, proceed)",
-        default="yes, proceed",
+        help="Placeholder text to show when auto-approving (default: /run dotnet build)",
+        default="/run dotnet build",
     )
     group.add_argument(
         "--light-mode",
