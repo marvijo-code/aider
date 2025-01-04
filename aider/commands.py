@@ -939,8 +939,9 @@ class Commands:
             ]
 
         if self.auto_approve:
-            self.io.placeholder = getattr(self.args, "auto_approve_placeholder", "yes, proceed")
-            self.io.input = "\n"
+            placeholder = getattr(self.args, "auto_approve_placeholder", "yes, proceed")
+            self.io.placeholder = placeholder
+            self.io.input = placeholder + "\n"
         elif add and exit_status != 0:
             self.io.placeholder = "Fix that"
 
