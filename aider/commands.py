@@ -929,6 +929,8 @@ class Commands:
 
         if add_on_nonzero_exit:
             add = exit_status != 0
+        elif self.auto_approve:
+            add = True
         else:
             add = self.io.confirm_ask("Add command output to the chat?")
 
@@ -948,9 +950,7 @@ class Commands:
             ]
 
         if self.auto_approve:
-            placeholder = getattr(self.args, "auto_approve_placeholder", "yes, proceed")
-            self.io.placeholder = placeholder + "\n"
-            self.io.input = placeholder + "\n"
+            self.io.placeholder = self.args.auto_approve_placeholder
         elif add and exit_status != 0:
             self.io.placeholder = "Fix that"
 
