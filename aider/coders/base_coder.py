@@ -291,6 +291,7 @@ class Coder:
         file_watcher=None,
         auto_copy_context=False,
         aider_ignore_file=None,
+        args=None,
     ):
         # Fill in a dummy Analytics if needed, but it is never .enable()'d
         self.analytics = analytics if analytics is not None else Analytics()
