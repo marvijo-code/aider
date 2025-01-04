@@ -1030,6 +1030,7 @@ class Coder:
                 platform=platform_text
             )
 
+        post_training_prompt = self.gpt_prompts.post_training_prompt
         if self.chat_language:
             language = self.chat_language
         else:
@@ -1042,6 +1043,7 @@ class Coder:
             shell_cmd_prompt=shell_cmd_prompt,
             shell_cmd_reminder=shell_cmd_reminder,
             language=language,
+            post_training_prompt=post_training_prompt,
         )
         return prompt
 

@@ -1,4 +1,5 @@
 class CoderPrompts:
+    post_training_prompt = "Extract data types from given examples."
     system_reminder = ""
 
     files_content_gpt_edits = "I committed the changes with git hash {hash} & commit msg: {message}"

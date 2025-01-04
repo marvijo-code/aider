@@ -17,10 +17,13 @@ class RestAPI:
             return json.dumps({"users": sorted(filtered_users, key=lambda x: x["name"])})
 
     def post(self, url, payload=None):
+        print("\n" + "="*50)  
+        print(f"PfffffffffffffffOST request to {url}")
         if payload is None:
             return None
             
         data = json.loads(payload)
+        print(f"Received payload: {data}")
         
         if url == "/add":
             new_user = {
@@ -30,6 +33,7 @@ class RestAPI:
                 "balance": 0.0
             }
             self.database["users"].append(new_user)
+            print(f"Adding new user: {new_user}")
             return json.dumps(new_user)
             
         elif url == "/iou":
@@ -41,6 +45,10 @@ class RestAPI:
                                if user["name"] == lender)
             borrower_record = next(user for user in self.database["users"] 
                                  if user["name"] == borrower)
+            
+            print(f"\nProcessing IOU: {lender} lending {amount} to {borrower}")
+            print(f"Before update - Lender {lender}: {json.dumps(lender_record, indent=2)}")
+            print(f"Before update - Borrower {borrower}: {json.dumps(borrower_record, indent=2)}")
             
             # Update lender's records
             if borrower in lender_record["owes"]:
@@ -70,7 +78,17 @@ class RestAPI:
             
             # Update balances
             for user in [lender_record, borrower_record]:
-                user["balance"] = sum(user.get("owed_by", {}).values()) - sum(user.get("owes", {}).values())
+                owed_by_sum = sum(user.get("owed_by", {}).values())
+                owes_sum = sum(user.get("owes", {}).values())
+                user["balance"] = owed_by_sum - owes_sum
+                print(f"\nCalculating balance for {user['name']}:")
+                print(f"  Owed by others: {owed_by_sum}")
+                print(f"  Owes to others: {owes_sum}")
+                print(f"  Final balance: {user['balance']}")
+            
+            print(f"\nAfter update - Lender {lender}: {json.dumps(lender_record, indent=2)}")
+            print(f"After update - Borrower {borrower}: {json.dumps(borrower_record, indent=2)}")
+            print("="*50 + "\n")
             
             return json.dumps({
                 "users": sorted([lender_record, borrower_record], key=lambda x: x["name"])

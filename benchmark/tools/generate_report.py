@@ -88,25 +88,42 @@ def parse_test_results(test_output):
     return test_results
 
 def get_test_result(directory):
-    """Extract test results from chat history file."""
+    """Extract test results from .aider.results.json file."""
+    results_file = os.path.join(directory, '.aider.results.json')
     history_file = os.path.join(directory, '.aider.chat.history.md')
     
-    if not os.path.exists(history_file):
-        return True, "", {}
+    print(f"test {os.path.basename(directory)}")
+    
+    if not os.path.exists(results_file):
+        return False, "", {}
         
-    with open(history_file, 'r', encoding='utf-8') as f:
-        content = f.read()
+    try:
+        with open(results_file, 'r', encoding='utf-8') as f:
+            results = json.load(f)
         
-        # Extract test output from code blocks
-        test_output = extract_test_output(content)
+        # Get test outcomes, consider failed if node doesn't exist
+        if 'tests_outcomes' not in results:
+            all_passed = False
+        else:
+            test_outcomes = results['tests_outcomes']
+            # Consider failed only if both outcomes are False
+            # If there's only one outcome, use it as is
+            all_passed = len(test_outcomes) == 1 or not (test_outcomes[0] is False and test_outcomes[1] is False)
         
-        # Parse test results
-        test_results = parse_test_results(test_output)
-        
-        # Determine if all tests passed
-        all_passed = len(test_results) == 0 and not test_output
+        # If tests failed, get the output from chat history
+        test_output = ""
+        test_results = {}
+        if not all_passed and os.path.exists(history_file):
+            with open(history_file, 'r', encoding='utf-8') as f:
+                content = f.read()
+                test_output = extract_test_output(content)
+                test_results = parse_test_results(test_output)
         
         return all_passed, test_output, test_results
+        
+    except Exception as e:
+        print(f"Error reading results file {results_file}: {str(e)}")
+        return True, "", {}
 
 def get_test_summary(folder_path):
     try:
@@ -146,24 +163,51 @@ def generate_report(folder_path):
         processed_folders = {}
 
         print(f"Starting report generation for root folder: {folder_path}")
+        print(f"Absolute path: {os.path.abspath(folder_path)}")
         
         # Verify root folder exists
         if not os.path.exists(folder_path):
+            print(f"Error: Root folder does not exist: {folder_path}")
             raise ValueError(f"Root folder not found: {folder_path}")
         
-        # Walk through the root directory
+        # Walk through all subdirectories
         for root, dirs, files in os.walk(folder_path):
-            if '.aider.chat.history.md' in files:
+            if '.aider.chat.history.md' in files or '.aider.results.json' in files:
                 processed_dirs += 1
                 try:
-                    folder_name = os.path.basename(root)
+                    # Use relative path from the input folder as the folder name
+                    rel_path = os.path.relpath(root, folder_path)
+                    folder_name = rel_path.replace('\\', '/')  # Normalize path separators
+                    
                     passed, test_output, test_results = get_test_result(root)
                     if not passed:  # Only process folders with failed tests
                         summary = get_test_summary(root)
                         processed_folders[folder_name] = (passed, summary, test_output, test_results)
                         failed_dirs += 1
+                        print(f"Found failed tests in: {folder_name}")
+                        
+                        # Create failed.md in the directory with failing tests
+                        failed_md_path = os.path.join(root, 'failed.md')
+                        with open(failed_md_path, 'w', encoding='utf-8') as failed_file:
+                            failed_file.write(f"# Failed Tests in {folder_name}\n\n")
+                            if summary:
+                                failed_file.write(f"## Summary\n{summary}\n\n")
+                            
+                            failed_file.write("## Failed Test Results\n\n")
+                            for test_name, result in test_results.items():
+                                failed_file.write(f"### {test_name}\n")
+                                failed_file.write("```\n")
+                                failed_file.write(result['details'])
+                                failed_file.write("\n```\n\n")
+                            
+                            if test_output:
+                                failed_file.write("## Full Test Output\n\n")
+                                failed_file.write("```\n")
+                                failed_file.write(clean_test_output(test_output))
+                                failed_file.write("\n```\n")
+                        print(f"Created failed.md in {folder_name}")
                 except Exception as e:
-                    print(f"Error: Failed processing directory {folder_name}: {str(e)}")
+                    print(f"Error: Failed processing directory {rel_path}: {str(e)}")
 
         if not processed_folders:
             print("No failed tests found.")
@@ -209,6 +253,7 @@ def generate_report(folder_path):
 
 if __name__ == "__main__":
     try:
+        print("Running generate_report.py")
         import sys
         if len(sys.argv) != 2:
             print("Usage: python generate_report.py <folder_path>")

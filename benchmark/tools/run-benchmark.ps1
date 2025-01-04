@@ -72,11 +72,11 @@ $runName = "${timestamp}--${testName}-${Model}-${EditFormat}"
 $testDir = Join-Path "tmp.benchmarks" $runName
 
 # Copy only the specific test to the temporary directory if not using num-tests
-if ($NumTests -le 0) {
-    # Create directory only when we need to copy a specific test
-    New-Item -ItemType Directory -Path $testDir | Out-Null
-    Copy-Item -Path $fullTestPath -Destination $testDir -Recurse
-}
+# if ($NumTests -le 0) {
+#     # Create directory only when we need to copy a specific test
+#     New-Item -ItemType Directory -Path $testDir | Out-Null
+#     Copy-Item -Path $fullTestPath -Destination $testDir -Recurse
+# }
 
 Write-Host "Activating $CondaEnv conda environment..."
 conda activate $CondaEnv
@@ -94,7 +94,7 @@ Get-Content .env | ForEach-Object {
 Write-Host "Running test: $(if ($NumTests -ne -1) { 'all (filtered by num-tests)' } else { $TestPath })"
 Write-Host "Using model: $Model"
 Write-Host "Edit format: $EditFormat"
-Write-Host "Number of tests: $(if ($NumTests -eq -1) { 'all' } else { $NumTests })"
+Write-Host "Number of tests: $NumTests"
 
 $env:AIDER_BENCHMARK_DIR = (Resolve-Path (Join-Path $PSScriptRoot "tmp.benchmarks")).Path
 $env:AIDER_RUN_LOCALLY = "true"
