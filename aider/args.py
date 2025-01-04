@@ -347,6 +347,17 @@ def get_parser(default_config_files, git_root):
         default=False,
     )
     group.add_argument(
+        "--auto-approve",
+        action="store_true",
+        help="Automatically approve commands (default: False)",
+        default=False,
+    )
+    group.add_argument(
+        "--auto-approve-placeholder",
+        help="Placeholder text to show when auto-approving (default: yes, proceed)",
+        default="yes, proceed",
+    )
+    group.add_argument(
         "--light-mode",
         action="store_true",
         help="Use colors suitable for a light terminal background (default: False)",
