@@ -934,6 +934,8 @@ class Commands:
         else:
             add = self.io.confirm_ask("Add command output to the chat?")
 
+        combined_output = combined_output[:30000]
+        
         if add:
             num_lines = len(combined_output.strip().splitlines())
             line_plural = "line" if num_lines == 1 else "lines"

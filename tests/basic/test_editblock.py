@@ -511,11 +511,56 @@ two
 Hope you like it!
 """
 
+    def test_deepseek_coder_v3_filename_mangling(self):
+        edit = """
+I'll help fix the null reference warnings. Let's address them one by one:
+
+1. First for MatchHistory.cs:
+
+Marvijo.Betting.DataService\\Repositories\\foo.txt
+```csharp
+<<<<<<< SEARCH
+one
+=======
+two
+>>>>>>> REPLACE
+```
+
+2. For FootballHistoryRepository.cs:
+
+Marvijo.Betting.DataService\\Repositories\\bar.txt
+```csharp
+<<<<<<< SEARCH
+three
+=======
+four
+>>>>>>> REPLACE
+```
+
+And another change in the same file:
+
+Marvijo.Betting.DataService\\Repositories\\bar.txt
+```csharp
+<<<<<<< SEARCH
+five
+=======
+six
+>>>>>>> REPLACE
+```
+These changes:
+```
+
+If you still see warnings
+"""
+
         edits = list(eb.find_original_update_blocks(edit))
+        print('edits', edits)
         self.assertEqual(
             edits,
             [
                 ("foo.txt", "one\n", "two\n"),
+                ("bar.txt", "three\n", "four\n"),
+                ("bar.txt", "five\n", "six\n"),
             ],
         )
 

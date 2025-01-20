@@ -478,6 +478,9 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
     if git is None:
         args.git = False
 
+    # Add debug logging for auto_approve flag
+    print(f"DEBUG: args.auto_approve={args.auto_approve} ({type(args.auto_approve)})")
+
     if args.analytics_disable:
         analytics = Analytics(permanently_disable=True)
         print("Analytics have been permanently disabled.")
@@ -514,9 +517,9 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
     editing_mode = EditingMode.VI if args.vim else EditingMode.EMACS
 
     def get_io(pretty):
-        return InputOutput(
+        io = InputOutput(
             pretty,
-            args.yes_always,
+            args.yes_always,  # Keep yes_always separate from auto_approve
             args.input_history_file,
             args.chat_history_file,
             input=input,
@@ -537,7 +540,10 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
             editingmode=editing_mode,
             fancy_input=args.fancy_input,
             multiline_mode=args.multiline,
+            auto_approve=args.auto_approve,  # Pass auto_approve separately
         )
+        io.tool_output(f"DEBUG: get_io called with yes_always={args.yes_always}, auto_approve={args.auto_approve}")
+        return io
 
     io = get_io(args.pretty)
     try:
